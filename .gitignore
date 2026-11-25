@@ -1,0 +1,4 @@
+/test
+/bench
+cuda/gemm
+.DS_Store
