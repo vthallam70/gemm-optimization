@@ -36,6 +36,24 @@ make            # clang++ -O3 -mavx2 -mfma
 - At 256, threading loses to one core: each thread re-packs B and the work per thread is too small.
 - Not yet done: prefetching, threading inside the packed loops instead of across rows (so B is packed once), and AVX-512.
 
-## CUDA kernels (`cuda/`), not yet run
+## CUDA kernels (`cuda/`)
 
-`gemm.cu` contains a coalesced naive kernel, 32x32 shared-memory tiling, and 2D register blocking (128x128 block tile, 8x8 per thread), each checked against cuBLAS (FP32, TF32 disabled) and timed with CUDA events. This machine has no NVIDIA GPU, so **this code has not been compiled or run yet**. Run it for free with `cuda/colab_gemm.ipynb` on a Colab T4, then record the results here.
+`gemm.cu` contains a coalesced naive kernel, 32x32 shared-memory tiling, and 2D register blocking (128x128 block tile, 256 threads, an 8x8 output sub-tile per thread held in registers). Each is checked against cuBLAS (FP32, TF32 disabled) and timed with CUDA events (median of 5–10 runs). Run it free with `cuda/colab_gemm.ipynb` on a Colab T4.
+
+### Results (Nov 25, 2026; Tesla T4, sm_75, 40 SMs, Colab free tier, CUDA 13.0)
+
+Full data in `cuda/results_gpu.csv`.
+
+| GFLOP/s | 1024 | 2048 | 4096 |
+|---|---|---|---|
+| naive | 339 | 453 | – |
+| smem_tiled | 576 | 922 | 919 |
+| reg_tiled | 1,873 | 3,670 | 3,531 |
+| cuBLAS SGEMM | 3,694 | 6,554 | 4,280 |
+| reg_tiled / cuBLAS | 51% | 56% | 82% |
+
+- Register blocking is the big step: each thread reuses every value it loads from shared memory 8 times, so `reg_tiled` is 8.1x `naive` at 2048 and 3.8x `smem_tiled` at 4096.
+- Shared-memory tiling alone only doubles `naive`: one FMA per two shared-memory loads keeps it bound by shared-memory bandwidth.
+- Max relative error vs cuBLAS is at most 5e-5. All three kernels accumulate over k in the same order, so their errors are identical; at 4096 cuBLAS evidently uses the same order too, giving bitwise-identical results (error 0).
+- cuBLAS drops from 6.6 to 4.3 TFLOP/s at 4096, consistent with the T4's 70 W power limit lowering clocks during long runs; GPU clocks were not recorded, so treat that comparison with care.
+- Next steps: vectorized `float4` loads, transposing the A tile to avoid shared-memory bank conflicts, double buffering, warp tiling, and Nsight Compute profiles of each kernel.

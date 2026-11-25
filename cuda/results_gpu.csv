@@ -1,0 +1,13 @@
+# GPU: Tesla T4 (sm_75, 40 SMs); Google Colab free tier, CUDA 13.0, Nov 25, 2026
+size,kernel,ms,gflops,max_rel_err_vs_cublas
+1024,cublas_sgemm,0.581,3693.6,0.00e+00
+1024,naive,6.329,339.3,2.43e-05
+1024,smem_tiled,3.727,576.2,2.43e-05
+1024,reg_tiled,1.147,1872.5,2.43e-05
+2048,cublas_sgemm,2.621,6553.6,0.00e+00
+2048,naive,37.904,453.2,4.97e-05
+2048,smem_tiled,18.644,921.5,4.97e-05
+2048,reg_tiled,4.682,3669.5,4.97e-05
+4096,cublas_sgemm,32.116,4279.5,0.00e+00
+4096,smem_tiled,149.509,919.3,0.00e+00
+4096,reg_tiled,38.928,3530.6,0.00e+00
